@@ -86,10 +86,32 @@ def preprocess_image(img):
     img = np.expand_dims(img, axis=0)
     return img
 
+def is_tomato(img):
+    """
+    Check if the image contains a tomato based on contours
+    Returns: True if tomato detected, False otherwise
+    """
+    contours = get_tomato_contours(img)
+    
+    if len(contours) == 0:
+        return False
+    
+    # Check if any valid tomato-sized contour exists
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        if w > 50 and h > 50:
+            return True
+    
+    return False
+
 # Classify tomato using model with color validation
 def classify_tomato(img):
     if model is None:
         return "Ripe", 0.5  # Default if model not loaded
+    
+    # First check if it's a tomato
+    if not is_tomato(img):
+        return "Not a Tomato", 0.0
     
     processed = preprocess_image(img)
     prediction = model.predict(processed, verbose=0)
@@ -286,27 +308,32 @@ with tab1:
         with col2:
             st.subheader("🔍 Analysis Results")
             
-            with st.spinner("Analyzing your tomato..."):
+            with st.spinner("Analyzing your image..."):
                 # Classify the tomato
                 result, confidence = classify_tomato(image_array)
                 
-                # Analyze color
-                dominant_color, color_conf = analyze_tomato_color(image_array)
-                
-                if result == "Ripe":
-                    st.success(f"🔴 **RIPE TOMATO** (Confidence: {confidence:.1%})")
-                    st.markdown("This tomato appears to be **ripe** and ready to eat! 🍅")
-                    st.balloons()
+                if result == "Not a Tomato":
+                    st.error("❌ **NOT A TOMATO**")
+                    st.markdown("This image does not appear to contain a tomato. Please upload an image with a tomato.")
+                    st.markdown("**Note:** This system is designed specifically for tomato ripeness detection.")
                 else:
-                    st.warning(f"🟡 **UNRIPE TOMATO** (Confidence: {confidence:.1%})")
-                    st.markdown("This tomato appears to be **unripe**. Give it more time to ripen! 🕒")
-                
-                # Show confidence bar
-                st.progress(confidence)
-                st.caption(f"Model confidence: {confidence:.1%}")
-                
-                # Show color analysis
-                st.info(f"**Detected color:** {dominant_color.upper()} ({color_conf:.1%} of pixels)")
+                    # Analyze color
+                    dominant_color, color_conf = analyze_tomato_color(image_array)
+                    
+                    if result == "Ripe":
+                        st.success(f"🔴 **RIPE TOMATO** (Confidence: {confidence:.1%})")
+                        st.markdown("This tomato appears to be **ripe** and ready to eat! 🍅")
+                        st.balloons()
+                    else:
+                        st.warning(f"🟡 **UNRIPE TOMATO** (Confidence: {confidence:.1%})")
+                        st.markdown("This tomato appears to be **unripe**. Give it more time to ripen! 🕒")
+                    
+                    # Show confidence bar
+                    st.progress(confidence)
+                    st.caption(f"Model confidence: {confidence:.1%}")
+                    
+                    # Show color analysis
+                    st.info(f"**Detected color:** {dominant_color.upper()} ({color_conf:.1%} of pixels)")
 
 # TAB 2: Live Camera (Keep existing working code)
 with tab2:
